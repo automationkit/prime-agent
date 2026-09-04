@@ -17,6 +17,7 @@ import { DaemonSupervisor } from "../../../src/modes/daemon/daemon-supervisor.js
 import type { DaemonWorkerFrameHeader } from "../../../src/modes/daemon/daemon-worker-protocol.js";
 import { SnapshotTranscriptCache } from "../../../src/modes/daemon/snapshot-transcript-cache.js";
 import type { PrivateFrame } from "../../../src/modes/session-worker/private-framing.js";
+import { seedSupervisorRoster } from "../../fixtures/roster-seed.js";
 
 const activeSessionId = "active-4677";
 const directories: string[] = [];
@@ -132,6 +133,11 @@ function workerHarness(result: DaemonAttachResult, transcript: SnapshotTranscrip
 			rootActiveSessionId: activeSessionId,
 			lifecycle: "ready",
 			pid: 4677,
+		},
+		client: {
+			request: vi.fn(async () => {
+				throw new Error("unexpected snapshot reload");
+			}),
 		},
 		summaries: new Map([[activeSessionId, result.snapshot.summary]]),
 		snapshotCache: new Map([[activeSessionId, result]]),
@@ -301,6 +307,7 @@ describe("ENG-4677 snapshot catch-up replacement", () => {
 			handleWorkerFrame(worker: WorkerHarness, frame: PrivateFrame<DaemonWorkerFrameHeader>): void;
 		};
 		internals.workers.set(worker.descriptor.workerId, worker);
+		seedSupervisorRoster(supervisor, worker);
 		const attaching = internals.attachClient(client, {
 			type: "attach",
 			activeSessionId,
@@ -429,6 +436,7 @@ describe("ENG-4677 snapshot catch-up replacement", () => {
 			handleWorkerFrame(worker: WorkerHarness, frame: PrivateFrame<DaemonWorkerFrameHeader>): void;
 		};
 		internals.workers.set(worker.descriptor.workerId, worker);
+		seedSupervisorRoster(supervisor, worker);
 		const { messages: _firstMessages, ...firstSnapshot } = firstResult.snapshot;
 		const firstBegin = {
 			type: "session_snapshot_begin",
@@ -692,6 +700,7 @@ describe("ENG-4677 snapshot catch-up replacement", () => {
 
 		internals.clients.add(client);
 		internals.workers.set(worker.descriptor.workerId, worker);
+		seedSupervisorRoster(supervisor, worker);
 		internals.queueCatchup(client, activeSessionId, "replacement");
 		await internals.catchUpClient(client);
 
